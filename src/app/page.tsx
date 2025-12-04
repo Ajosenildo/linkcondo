@@ -5,6 +5,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react'
 import { useSearchParams, useRouter, usePathname } from 'next/navigation'
 import Image from 'next/image'
+import HomePageContent from '@/components/HomePageContent'
 
 interface TenantData {
   nome_empresa?: string
