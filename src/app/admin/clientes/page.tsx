@@ -7,7 +7,7 @@ import { cookies } from 'next/headers' // Importa a função cookies
 
 export default async function ClientesPage() {
   // 1. Passa o cookieStore para o createClient
-  const cookieStore = cookies()
+  const cookieStore = await cookies()
   const supabase = createClient(cookieStore)
 
   // 2. Proteção: Garante que o admin está logado
