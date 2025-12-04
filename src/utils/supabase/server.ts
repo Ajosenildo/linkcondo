@@ -1,33 +1,32 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
-import { type cookies } from 'next/headers' // Importa o TIPO, não a função
+// src/utils/supabase/server.ts
+// ATUALIZADO: Correção de tipagem para Next.js 15/16
 
-// Define o tipo do cookieStore para ser passado
-type CookieStore = ReturnType<typeof cookies>
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
-// A FUNÇÃO createClient AGORA RECEBE o cookieStore
-export function createClient(cookieStore: CookieStore) {
-
+// Recebe o cookieStore já aguardado (awaited)
+export const createClient = (cookieStore: any) => {
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         get(name: string) {
-          // 'get' agora usa o cookieStore que foi passado
           return cookieStore.get(name)?.value
         },
-        set(name: string, value: string, options: CookieOptions) {
+        set(name: string, value: string, options: any) {
           try {
             cookieStore.set({ name, value, ...options })
           } catch (error) {
-            // O set pode falhar em Server Actions ou Route Handlers
+            // O método set foi chamado de um Server Component.
+            // Isso pode ser ignorado se você tiver middleware.
           }
         },
-        remove(name: string, options: CookieOptions) {
+        remove(name: string, options: any) {
           try {
             cookieStore.set({ name, value: '', ...options })
           } catch (error) {
-            // O remove pode falhar em Server Actions ou Route Handlers
+            // O método delete foi chamado de um Server Component.
           }
         },
       },
