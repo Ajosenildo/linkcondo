@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  reactStrictMode: true,
   images: {
     remotePatterns: [
       {
@@ -10,7 +11,6 @@ const nextConfig = {
       },
     ],
   },
-  // Se ainda quiser tentar o multi-tenant sem middleware futuramente, usaria rewrites aqui
 };
 
 export default nextConfig;
