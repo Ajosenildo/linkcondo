@@ -9,19 +9,42 @@ import { Lock, Save, Loader2, CheckCircle, AlertCircle } from 'lucide-react'
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  
+  // Mudança: começamos sem mensagem de erro, esperando a validação
   const [msg, setMsg] = useState('')
+  const [verificandoSessao, setVerificandoSessao] = useState(true)
+  
   const router = useRouter()
   const supabase = createClient()
 
-  // Verifica se o usuário chegou aqui autenticado (pelo link mágico)
+  // 1. Monitora a Sessão em tempo real
   useEffect(() => {
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        setMsg('Erro: Link inválido ou expirado. Solicite novamente.')
+    // Escuta mudanças na autenticação (login, logout, recuperação)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Evento de Auth:", event)
+      
+      if (session) {
+        // Se tem sessão, está tudo certo!
+        setVerificandoSessao(false)
+        setMsg('') 
+      } else {
+        // Se não tem sessão após o carregamento inicial
+        if (event === 'SIGNED_OUT' || event === 'INITIAL_SESSION') {
+           // Dá um tempinho extra antes de decretar erro (para evitar falso negativo)
+           setTimeout(async () => {
+             const { data } = await supabase.auth.getSession()
+             if (!data.session) {
+               setVerificandoSessao(false)
+               setMsg('O link expirou ou é inválido. Por favor, solicite um novo.')
+             }
+           }, 1000)
+        }
       }
+    })
+
+    return () => {
+      subscription.unsubscribe()
     }
-    checkSession()
   }, [])
 
   const handleUpdate = async (e: React.FormEvent) => {
@@ -30,7 +53,6 @@ export default function UpdatePasswordPage() {
     setMsg('')
 
     try {
-      // Atualiza a senha do usuário LOGADO
       const { error } = await supabase.auth.updateUser({
         password: password
       })
@@ -38,7 +60,6 @@ export default function UpdatePasswordPage() {
       if (error) throw error
 
       setMsg('sucesso: Senha atualizada! Redirecionando...')
-      
       setTimeout(() => {
         router.push('/admin/dashboard')
       }, 2000)
@@ -48,6 +69,18 @@ export default function UpdatePasswordPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  // Se ainda estiver verificando, mostra um loader em vez do erro
+  if (verificandoSessao) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-slate-100 p-4">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="animate-spin text-slate-400" size={32} />
+          <p className="text-slate-500 text-sm">Validando seu acesso...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -69,7 +102,8 @@ export default function UpdatePasswordPage() {
               type="password" 
               required
               minLength={6}
-              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 outline-none transition"
+              disabled={!!msg && !msg.includes('sucesso')} // Desabilita se tiver erro
+              className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 outline-none transition disabled:bg-slate-50"
               placeholder="Mínimo 6 caracteres"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -77,15 +111,15 @@ export default function UpdatePasswordPage() {
           </div>
 
           {msg && (
-            <div className={`p-3 rounded-lg text-sm text-center font-medium flex items-center justify-center gap-2 ${msg.includes('sucesso') ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+            <div className={`p-3 rounded-lg text-sm text-center font-medium flex items-center justify-center gap-2 ${msg.includes('sucesso') ? 'bg-green-100 text-green-700' : 'bg-red-50 text-red-600 border border-red-100'}`}>
               {msg.includes('sucesso') ? <CheckCircle size={16}/> : <AlertCircle size={16}/>}
               <span>{msg.replace('sucesso: ', '').replace('Erro: ', '')}</span>
             </div>
           )}
 
           <button 
-            disabled={loading || msg.includes('inválido')}
-            className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition flex justify-center items-center gap-2 disabled:opacity-50"
+            disabled={loading || (!!msg && !msg.includes('sucesso'))}
+            className="w-full bg-slate-900 text-white py-3 rounded-lg font-bold hover:bg-slate-800 transition flex justify-center items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />}
             {loading ? 'Salvando...' : 'Salvar Senha'}
